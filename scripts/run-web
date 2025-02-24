@@ -1,0 +1,2 @@
+#!/bin/sh
+DEBUG=true poetry run forecast_pm_2_5-web -H 0.0.0.0 -d
