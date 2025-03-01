@@ -1,9 +1,13 @@
 import mongoengine as me
 from flask_mongoengine import MongoEngine
 from .users import User
+from .forecast_model import load_forecast_model
 
 
-__all__ = ["User"]
+__all__ = [
+    "User",
+    "load_forecast_model"
+]
 
 db = MongoEngine()
 

@@ -241,27 +241,27 @@
     <div class="info-container">
       <h4><i class="info circle icon"></i> Real-time Analysis</h4>
       <p>
-        This interactive dashboard presents the forecast of PM2.5 values for the next week. The data reveals a concerning spike on Wednesday and Thursday before improving into the weekend. This pattern suggests an incoming pollution event that may require precautionary measures.
+        This interactive dashboard presents the forecast of PM2.5 values for the next week, updated automatically based on real-time data and predictive modeling.
       </p>
     </div>
     
     <div class="data-cards">
       <div class="data-card good">
         <h4>Current PM2.5 Level</h4>
-        <div class="value">11.2</div>
-        <p>μg/m³ - Good air quality</p>
+        <div class="value" id="current-pm25">Loading...</div>
+        <p>μg/m³</p>
       </div>
       
       <div class="data-card moderate">
         <h4>Weekly Average</h4>
-        <div class="value">23.8</div>
-        <p>μg/m³ - Moderate level</p>
+        <div class="value" id="weekly-avg">Loading...</div>
+        <p>μg/m³</p>
       </div>
       
       <div class="data-card unhealthy">
         <h4>Forecasted Peak</h4>
-        <div class="value">42.5</div>
-        <p>μg/m³ - Expected on Thursday</p>
+        <div class="value" id="forecast-peak">Loading...</div>
+        <p>μg/m³</p>
       </div>
     </div>
     
@@ -270,7 +270,7 @@
         <div class="info-container">
           <h4><i class="database icon"></i> Data Source</h4>
           <p>
-            This forecast is generated using advanced predictive modeling based on real-time air quality monitoring systems, meteorological data, and historical PM2.5 patterns. The values represent the concentration of particulate matter with a diameter of 2.5 micrometers or less (PM2.5) in micrograms per cubic meter of air (μg/m³).
+            This forecast is generated using advanced predictive modeling based on real-time air quality data from Air4Thai and historical PM2.5 patterns.
           </p>
         </div>
       </div>
@@ -278,7 +278,7 @@
         <div class="info-container">
           <h4><i class="heartbeat icon"></i> Health Impact</h4>
           <p>
-            Exposure to high levels of PM2.5 can cause respiratory issues, irritation to the eyes, nose, and throat, and may exacerbate existing conditions like asthma. Those with respiratory or cardiovascular conditions, children, and the elderly should take extra precautions when values exceed 35.5 μg/m³.
+            Exposure to high PM2.5 levels can cause respiratory issues and exacerbate conditions like asthma. Take precautions when levels exceed 35.5 μg/m³.
           </p>
         </div>
       </div>
@@ -289,303 +289,219 @@
       
       <div class="recommendation-card">
         <i class="mask icon"></i>
-        <p>Consider wearing N95 masks when PM2.5 levels exceed 35.5 μg/m³, especially on Wednesday and Thursday of the forecast period.</p>
+        <p>Wear N95 masks when PM2.5 levels exceed 35.5 μg/m³.</p>
       </div>
       
       <div class="recommendation-card">
         <i class="home icon"></i>
-        <p>Keep windows closed during peak pollution hours, typically from 7-10 AM and 5-8 PM when levels are forecasted to be highest.</p>
+        <p>Keep windows closed during peak pollution hours.</p>
       </div>
       
       <div class="recommendation-card">
         <i class="fan icon"></i>
-        <p>Use air purifiers with HEPA filters indoors, especially in bedrooms and commonly used spaces.</p>
+        <p>Use air purifiers with HEPA filters indoors.</p>
       </div>
       
       <div class="recommendation-card">
         <i class="running icon"></i>
-        <p>Avoid outdoor exercise when PM2.5 levels exceed 35.5 μg/m³. Consider indoor activities on Thursday when levels are expected to peak.</p>
+        <p>Avoid outdoor exercise when PM2.5 levels exceed 35.5 μg/m³.</p>
       </div>
     </div>
   </div>
 
   <script src="https://cdnjs.cloudflare.com/ajax/libs/apexcharts/3.36.0/apexcharts.min.js"></script>
   <script>
-    // Generate next week's dates starting from current date
-    const today = new Date();
-    const nextWeek = [];
-    
-    for (let i = 0; i < 7; i++) {
-      const date = new Date();
-      date.setDate(today.getDate() + i);
-      nextWeek.push(date.getTime());
-    }
-    
-    // Forecasted PM2.5 data for next week
-    // Following a realistic pattern with workday pollution peaks
-    const pm25Data = [
-      [nextWeek[0], 11.2],  // Today
-      [nextWeek[1], 18.5],  // Tomorrow
-      [nextWeek[2], 26.8],  // Day 3
-      [nextWeek[3], 42.5],  // Day 4 (peak)
-      [nextWeek[4], 36.2],  // Day 5
-      [nextWeek[5], 19.4],  // Day 6
-      [nextWeek[6], 12.3]   // Day 7
-    ];
-    
-    // Function to determine color based on PM2.5 value
+    let chart = null;
+
+    // ฟังก์ชันกำหนดสีตามค่า PM2.5
     function getColorFromValue(value) {
       if (value <= 12) return '#00c853';        // Good
       if (value <= 35.4) return '#ffab00';      // Moderate
       if (value <= 55.4) return '#e53935';      // Unhealthy
-      return '#8e24aa';                        // Very Unhealthy
+      return '#8e24aa';                         // Very Unhealthy
     }
-    
-    // Create a series with color-coded markers based on PM2.5 values
-    const seriesData = pm25Data.map(item => ({
-      x: item[0],
-      y: item[1],
-      color: getColorFromValue(item[1])
-    }));
-    
-    // Create threshold zones for the graph
-    const annotations = {
-      yaxis: [
-        {
-          y: 12,
-          y2: 0,
-          borderColor: '#00c853',
-          fillColor: 'rgba(0, 200, 83, 0.1)',
-          label: {
-            text: 'Good',
-            position: 'left',
-            style: {
-              color: '#00c853',
-              background: 'rgba(0, 0, 0, 0)'
-            }
+
+    // ฟังก์ชันอัปเดตกราฟ
+    function updateChart() {
+      fetch('/predict')
+        .then(response => response.json())
+        .then(data => {
+          if (data.error) {
+            console.error('Error:', data.error);
+            document.getElementById('chart').innerHTML = `Error loading forecast data: ${data.error}<br>Raw Response: ${data.raw_response || 'N/A'}`;
+            document.getElementById('current-pm25').textContent = 'N/A';
+            document.getElementById('weekly-avg').textContent = 'N/A';
+            document.getElementById('forecast-peak').textContent = 'N/A';
+            return;
           }
-        },
-        {
-          y: 35.4,
-          y2: 12.1,
-          borderColor: '#ffab00',
-          fillColor: 'rgba(255, 171, 0, 0.1)',
-          label: {
-            text: 'Moderate',
-            position: 'left',
-            style: {
-              color: '#ffab00',
-              background: 'rgba(0, 0, 0, 0)'
-            }
-          }
-        },
-        {
-          y: 55.4,
-          y2: 35.5,
-          borderColor: '#e53935',
-          fillColor: 'rgba(229, 57, 53, 0.1)',
-          label: {
-            text: 'Unhealthy',
-            position: 'left',
-            style: {
-              color: '#e53935',
-              background: 'rgba(0, 0, 0, 0)'
-            }
-          }
-        },
-        {
-          y: 150,
-          y2: 55.5,
-          borderColor: '#8e24aa',
-          fillColor: 'rgba(142, 36, 170, 0.1)',
-          label: {
-            text: 'Very Unhealthy',
-            position: 'left',
-            style: {
-              color: '#8e24aa',
-              background: 'rgba(0, 0, 0, 0)'
-            }
-          }
-        }
-      ]
-    };
-    
-    // Apply custom chart options
-    const options = {
-      series: [{
-        name: 'PM2.5 Levels',
-        data: seriesData
-      }],
-      chart: {
-        type: 'area',
-        height: 380,
-        fontFamily: 'Segoe UI, sans-serif',
-        toolbar: {
-          show: true,
-          tools: {
-            download: true,
-            selection: true,
-            zoom: true,
-            zoomin: true,
-            zoomout: true,
-            pan: true,
-            reset: true
-          }
-        },
-        dropShadow: {
-          enabled: true,
-          top: 2,
-          left: 2,
-          blur: 4,
-          opacity: 0.1
-        },
-        animations: {
-          enabled: true,
-          easing: 'easeinout',
-          speed: 800
-        }
-      },
-      annotations: annotations,
-      colors: ['#3f51b5'],
-      fill: {
-        type: 'gradient',
-        gradient: {
-          shadeIntensity: 1,
-          opacityFrom: 0.6,
-          opacityTo: 0.1,
-          stops: [0, 90, 100],
-          colorStops: [
-            {
-              offset: 0,
-              color: '#3f51b5',
-              opacity: 0.6
+
+          // ข้อมูลย้อนหลัง 7 วัน
+          const pastData = data.past.map(item => ({
+            x: new Date(item.date).getTime(),
+            y: Number(item.pm25.toFixed(2)),
+            color: getColorFromValue(item.pm25)
+          }));
+
+          // ข้อมูลทำนาย 7 วัน
+          const forecastData = data.forecast.map(item => ({
+            x: new Date(item.date).getTime(),
+            y: Number(item.pm25.toFixed(2)),
+            color: getColorFromValue(item.pm25)
+          }));
+
+          // อัปเดต data cards
+          const allPM25Values = [...data.past.map(item => item.pm25), ...data.forecast.map(item => item.pm25)];
+          const currentPM25 = data.past[data.past.length - 1].pm25;
+          const weeklyAvg = allPM25Values.reduce((a, b) => a + b, 0) / allPM25Values.length;
+          const forecastPeak = Math.max(...data.forecast.map(item => item.pm25));
+
+          document.getElementById('current-pm25').textContent = currentPM25.toFixed(2);
+          document.getElementById('weekly-avg').textContent = weeklyAvg.toFixed(2);
+          document.getElementById('forecast-peak').textContent = forecastPeak.toFixed(2);
+
+          // กำหนดวันที่ปัจจุบัน
+          const today = new Date(data.today);
+          const todayTimestamp = today.setHours(0, 0, 0, 0);
+
+          // ตั้งค่า options สำหรับ ApexCharts
+          const options = {
+            series: [
+              {
+                name: 'Past PM2.5 Levels',
+                data: pastData
+              },
+              {
+                name: 'Forecast PM2.5 Levels',
+                data: forecastData
+              }
+            ],
+            chart: {
+              type: 'area',
+              height: 380,
+              fontFamily: 'Segoe UI, sans-serif',
+              toolbar: { show: true },
+              dropShadow: { enabled: true, top: 2, left: 2, blur: 4, opacity: 0.1 },
+              animations: { enabled: true, easing: 'easeinout', speed: 800 },
+              events: {
+                updated: function(chartContext, config) {
+                  console.log('Chart updated');
+                }
+              }
             },
-            {
-              offset: 100,
-              color: '#3f51b5',
-              opacity: 0.1
-            }
-          ]
-        }
-      },
-      stroke: {
-        curve: 'smooth',
-        width: 3
-      },
-      markers: {
-        size: 6,
-        discrete: seriesData.map(item => ({
-          dataPointIndex: seriesData.indexOf(item),
-          fillColor: item.color,
-          strokeColor: '#fff',
-          strokeWidth: 2
-        }))
-      },
-      grid: {
-        borderColor: '#e0e0e0',
-        strokeDashArray: 5,
-        padding: {
-          top: 10,
-          right: 20,
-          bottom: 10,
-          left: 20
-        }
-      },
-      xaxis: {
-        type: 'datetime',
-        labels: {
-          style: {
-            colors: '#546e7a',
-            fontSize: '12px',
-            fontFamily: 'Segoe UI, sans-serif',
-            fontWeight: 400
-          },
-          datetimeFormatter: {
-            day: 'ddd'
+            annotations: {
+              yaxis: [
+                { y: 12, y2: 0, borderColor: '#00c853', fillColor: 'rgba(0, 200, 83, 0.1)', label: { text: 'Good', style: { color: '#00c853' } } },
+                { y: 35.4, y2: 12.1, borderColor: '#ffab00', fillColor: 'rgba(255, 171, 0, 0.1)', label: { text: 'Moderate', style: { color: '#ffab00' } } },
+                { y: 55.4, y2: 35.5, borderColor: '#e53935', fillColor: 'rgba(229, 57, 53, 0.1)', label: { text: 'Unhealthy', style: { color: '#e53935' } } },
+                { y: 150, y2: 55.5, borderColor: '#8e24aa', fillColor: 'rgba(142, 36, 170, 0.1)', label: { text: 'Very Unhealthy', style: { color: '#8e24aa' } } }
+              ],
+              xaxis: [
+                {
+                  x: todayTimestamp,
+                  borderColor: '#00e676',
+                  label: {
+                    text: 'Today (' + today.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' }) + ')',
+                    style: {
+                      color: '#00e676',
+                      background: '#fff',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      cssClass: 'apexcharts-xaxis-annotation-label'
+                    },
+                    offsetY: -10
+                  }
+                }
+              ]
+            },
+            colors: ['#3f51b5', '#ff5722'],
+            fill: { type: 'gradient', gradient: { shadeIntensity: 1, opacityFrom: 0.6, opacityTo: 0.1, stops: [0, 90, 100] } },
+            stroke: { curve: 'smooth', width: 3 },
+            markers: {
+              size: 6,
+              discrete: [...pastData, ...forecastData].map((item, index) => ({
+                seriesIndex: index < pastData.length ? 0 : 1,
+                dataPointIndex: index < pastData.length ? index : index - pastData.length,
+                fillColor: item.color,
+                strokeColor: '#fff',
+                strokeWidth: 2
+              }))
+            },
+            grid: { borderColor: '#e0e0e0', strokeDashArray: 5 },
+            xaxis: {
+              type: 'datetime',
+              labels: {
+                datetimeFormatter: {
+                  year: 'yyyy',
+                  month: "MMM yyyy", // แสดง "Mar 2025"
+                  day: 'ddd, dd MMM yyyy', // แสดง "Fri, 28 Feb 2025"
+                  hour: 'HH:mm'
+                },
+                style: { colors: '#546e7a' }
+              },
+              axisBorder: { show: true, color: '#78909c' },
+              axisTicks: { show: true, color: '#78909c' }
+            },
+            yaxis: {
+              min: 0,
+              max: 65,
+              title: { text: 'PM2.5 Levels (μg/m³)', style: { color: '#546e7a', fontSize: '14px', fontWeight: 600 } },
+              labels: {
+                formatter: function(val) {
+                  return val.toFixed(2);
+                },
+                style: { colors: '#546e7a' }
+              }
+            },
+            tooltip: {
+              x: { format: 'ddd, dd MMM yyyy' },
+              y: {
+                formatter: function(val) {
+                  return val.toFixed(2) + ' μg/m³';
+                }
+              }
+            },
+            title: { text: 'PM2.5 Air Quality (Past & Forecast)', align: 'left', style: { fontSize: '18px', fontWeight: '600', color: '#263238' } },
+            subtitle: { text: 'Source: Air4Thai Predictive Model', align: 'left', style: { fontSize: '13px', color: '#78909c' } }
+          };
+
+          // ถ้ากราฟยังไม่ถูกสร้าง สร้างใหม่
+          if (!chart) {
+            chart = new ApexCharts(document.querySelector("#chart"), options);
+            chart.render();
+          } else {
+            // อัปเดตกราฟที่มีอยู่
+            chart.updateSeries([
+              { name: 'Past PM2.5 Levels', data: pastData },
+              { name: 'Forecast PM2.5 Levels', data: forecastData }
+            ]);
           }
-        },
-        axisBorder: {
-          show: true,
-          color: '#78909c'
-        },
-        axisTicks: {
-          show: true,
-          color: '#78909c'
-        }
-      },
-      yaxis: {
-        min: 0,
-        max: 65,
-        title: {
-          text: 'PM2.5 Levels (μg/m³)',
-          style: {
-            color: '#546e7a',
-            fontSize: '14px',
-            fontFamily: 'Segoe UI, sans-serif',
-            fontWeight: 600
-          }
-        },
-        labels: {
-          style: {
-            colors: '#546e7a',
-            fontSize: '12px',
-            fontFamily: 'Segoe UI, sans-serif',
-            fontWeight: 400
-          },
-          formatter: function(val) {
-            return val.toFixed(1);
-          }
-        }
-      },
-      dataLabels: {
-        enabled: false
-      },
-      tooltip: {
-        shared: false,
-        intersect: true,
-        x: {
-          format: 'dd MMM'
-        },
-        y: {
-          formatter: function(val) {
-            return val.toFixed(1) + ' μg/m³';
-          }
-        },
-        marker: {
-          show: true
-        },
-        theme: 'light',
-        style: {
-          fontSize: '12px',
-          fontFamily: 'Segoe UI, sans-serif'
-        }
-      },
-      legend: {
-        show: false
-      },
-      title: {
-        text: 'PM2.5 Air Quality Forecast (Next 7 Days)',
-        align: 'left',
-        style: {
-          fontSize: '18px',
-          fontWeight: '600',
-          fontFamily: 'Segoe UI, sans-serif',
-          color: '#263238'
-        }
-      },
-      subtitle: {
-        text: 'Source: Air Quality Monitoring Network',
-        align: 'left',
-        style: {
-          fontSize: '13px',
-          fontFamily: 'Segoe UI, sans-serif',
-          color: '#78909c'
-        }
-      }
-    };
-    
-    var chart = new ApexCharts(document.querySelector("#chart"), options);
-    chart.render();
+        })
+        .catch(error => {
+          console.error('Fetch error:', error);
+          document.getElementById('chart').innerHTML = 'Error loading forecast data: Network issue';
+          document.getElementById('current-pm25').textContent = 'N/A';
+          document.getElementById('weekly-avg').textContent = 'N/A';
+          document.getElementById('forecast-peak').textContent = 'N/A';
+        });
+    }
+
+    // อัปเดตกราฟทุก 24 ชั่วโมง (หรือตามช่วงเวลาที่ต้องการ)
+    updateChart(); // อัปเดตทันทีเมื่อโหลดหน้า
+    setInterval(updateChart, 24 * 60 * 60 * 1000); // อัปเดตทุก 24 ชั่วโมง (86400000 ms)
+
+    // หรืออัปเดตเมื่อเปลี่ยนวันที่ (เที่ยงคืน)
+    function checkAndUpdate() {
+      const now = new Date();
+      const midnight = new Date(now);
+      midnight.setHours(24, 0, 0, 0); // วันถัดไปเที่ยงคืน
+      const timeUntilMidnight = midnight - now;
+
+      setTimeout(() => {
+        updateChart();
+        checkAndUpdate(); // วนลูป
+      }, timeUntilMidnight);
+    }
+    checkAndUpdate(); // เริ่มตรวจสอบ
   </script>
 </body>
 </html>
