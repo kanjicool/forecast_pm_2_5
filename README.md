@@ -1,10 +1,13 @@
-# forecast pm 2.5
+# Forecast pm 2.5
 Mini Project use LSTM model by kanjicool
-โปรเจคนี้ใช้โมเดล LSTM เพื่อพยากรณ์ค่า PM 2.5
+This project utilizes a ConvLSTM1D + Bidirectional LSTM model to forecast PM 2.5 levels for the next week.
 
 
 # web forecast pm 2.5
-เป็นใช้ API ของ air4thai เป็นข้อมูลย้อนหลัง 7 วันส่งไปเป็น Input เข้า model จากนั้นโมเดลจะทำการทำนายค่า PM 2.5 ในอีก 1 สัปดาห์ข้างหน้า โดยใช้หลักการ Autoregressive (ค่าที่ทำนายได้จะมีความแม่นยำที่ลดลงเล็กน้อยเนื่องจากตัวโครงสร้าง Output ของโมเดลในขั้นตอนการ Train ฉันกำหนดให้เป็น Dense จึงเป็นเหตุผลที่ต้องใช้วิธีนี้)
+Use the Air4Thai API to retrieve historical data from the past 7 days as input for a model. The model will then predict PM 2.5 levels for the next week using an autoregressive approach. The predicted values may have slightly reduced accuracy due to the model's output structure during training, which is defined as Dense. This necessitates the use of this method.
+
+
+ใช้ API ของ air4thai เป็นข้อมูลย้อนหลัง 7 วันส่งไปเป็น Input เข้า model จากนั้นโมเดลจะทำการทำนายค่า PM 2.5 ในอีก 1 สัปดาห์ข้างหน้า โดยใช้หลักการ Autoregressive (ค่าที่ทำนายได้จะมีความแม่นยำที่ลดลงเล็กน้อยเนื่องจากตัวโครงสร้าง Output ของโมเดลในขั้นตอนการ Train ฉันกำหนดให้เป็น Dense จึงเป็นเหตุผลที่ต้องใช้วิธีนี้)
 
 [![LSTM1.png](https://i.postimg.cc/xqV0HKdj/LSTM1.png)](https://postimg.cc/kRw3PR8L)
 
